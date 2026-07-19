@@ -1,0 +1,42 @@
+{
+  "name": "phisorilla-backend",
+  "version": "0.6.0",
+  "type": "commonjs",
+  "imports": {
+    "crypto": {
+      "bare": "bare-crypto",
+      "default": "crypto"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "path": {
+      "bare": "bare-path",
+      "default": "path"
+    },
+    "events": {
+      "bare": "bare-events",
+      "default": "events"
+    },
+    "stream": {
+      "bare": "bare-stream",
+      "default": "stream"
+    }
+  },
+  "dependencies": {
+    "b4a": "^1.8.1",
+    "bare-crypto": "^1.15.3",
+    "bare-events": "^2.9.1",
+    "bare-fs": "^4.7.4",
+    "bare-path": "^3.1.1",
+    "bare-stream": "^2.13.3",
+    "hyperdht": "^6.33.0",
+    "hyperswarm": "^4.17.0",
+    "scrypt-js": "^3.0.1",
+    "sodium-native": "^5.1.0"
+  },
+  "devDependencies": {
+    "bare-pack": "^2.2.1"
+  }
+}

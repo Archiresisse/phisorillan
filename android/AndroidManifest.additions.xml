@@ -1,0 +1,29 @@
+<!-- ────────────────────────────────────────────────────────────────────
+     這【不是】完整的 manifest，是要你合併進 react-native init 產生的那份的片段。
+     ⚠️ 未經編譯驗證。
+     ──────────────────────────────────────────────────────────────────── -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- 前台服務（Android 9+ 需要）-->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <!-- Android 14+ 要宣告前台服務型別 -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <!-- 通知（Android 13+ 執行期權限，還要在 JS 端 request）-->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- 開機自動啟動（選用，要搭配 BootReceiver）-->
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <!-- P2P 需要網路 -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <!-- 部分機型要這個才不會在 Doze 完全斷網（要引導使用者手動允許「不受電池最佳化限制」）-->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+  <application>
+    <!-- 放在 <application> 裡面 -->
+    <service
+        android:name="com.phisorilla.PhiForegroundService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="dataSync" />
+  </application>
+</manifest>

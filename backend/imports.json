@@ -1,0 +1,7 @@
+{
+  "crypto": "bare-crypto",
+  "fs": "bare-fs",
+  "path": "bare-path",
+  "events": "bare-events",
+  "stream": "bare-stream"
+}

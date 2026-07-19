@@ -1,0 +1,24 @@
+{
+  "name": "phisorilla-bare-android",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phisorilla 的 Android（Bare runtime）移植 — 未經審計，請勿用於真正需要保密的場合",
+  "scripts": {
+    "postinstall": "cd backend && npm install",
+    "test": "node test/suite.js && node test/bridge.test.js && node test/ui.test.js",
+    "test:suite": "node test/suite.js",
+    "test:bridge": "node test/bridge.test.js",
+    "test:ui": "node test/ui.test.js",
+    "test:smoke": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-modules-commonjs": "^7.29.7",
+    "@babel/preset-react": "^7.27.1",
+    "react": "18.3.1",
+    "react-test-renderer": "18.3.1"
+  }
+}

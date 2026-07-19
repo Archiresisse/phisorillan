@@ -1,0 +1,31 @@
+// ────────────────────────────────────────────────────────────────────────
+// 這【不是】完整的 build.gradle，是要你併進 RN 產生的 android/app/build.gradle 的片段。
+// ⚠️ 未經編譯驗證。
+//
+// ★ 這裡才是「32 位／64 位」真正被決定的地方——不是在 worklet.bundle.mjs 裡。
+//   之前我說 bundle 是「arm64-only」其實不精確：ABI 是在這裡用 abiFilters 選的，
+//   兩個 ABI 的原生 .bare 二進位 sodium-native / udx-native 套件裡都有。
+// ────────────────────────────────────────────────────────────────────────
+android {
+    defaultConfig {
+        ndk {
+            // 同時支援 64 位和 32 位。要縮小 apk 可以只留 "arm64-v8a"。
+            abiFilters "arm64-v8a", "armeabi-v7a"
+        }
+    }
+
+    // 想按 ABI 拆成多個小 apk（Play 上架建議）可開這段：
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include "arm64-v8a", "armeabi-v7a"
+    //         universalApk false
+    //     }
+    // }
+}
+
+dependencies {
+    // react-native-bare-kit 會把 worklet 的原生 .bare 依 abiFilters 打包進來
+    implementation project(':react-native-bare-kit')
+}
