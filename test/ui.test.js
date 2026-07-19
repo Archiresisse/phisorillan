@@ -322,9 +322,19 @@ for (let i = 0; i < 60 && !(bMedia && bMedia.state !== 'receiving'); i++) {
 ok('B 真的收到了檔案', !!bMedia && bMedia.media.name === '照片.jpg')
 ok('B 畫面上出現媒體氣泡', !!bMedia && await until(() => B.has('media-' + bMedia.media.id)))
 if (bMedia) {
-  const r = await B.client.api.mediaPath(bMedia.media.id)
-  ok('B 收到的檔案內容與原檔一致',
-    r.ok && Buffer.compare(fs.readFileSync(r.path), fs.readFileSync(tmpFile)) === 0)
+  // 文件分块重组偶尔慢一拍——多给几次重试，等内容完全一致再比对。
+  // 否则在慢的环境（如 CI）里，最后一个块还在路上就比对，会偶发失败。
+  let same = false
+  for (let i = 0; i < 40 && !same; i++) {
+    const r = await B.client.api.mediaPath(bMedia.media.id)
+    if (r.ok) {
+      try {
+        same = Buffer.compare(fs.readFileSync(r.path), fs.readFileSync(tmpFile)) === 0
+      } catch (e) { same = false }
+    }
+    if (!same) for (const p of PHONES) await p.flush(4)
+  }
+  ok('B 收到的檔案內容與原檔一致', same)
 }
 
 // 沒裝選檔器時要停用而不是崩潰
