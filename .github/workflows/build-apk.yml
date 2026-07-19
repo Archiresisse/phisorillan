@@ -1,0 +1,148 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install root deps and run tests
+        run: |
+          npm install --legacy-peer-deps
+          npm test
+
+      - name: Scaffold React Native project
+        run: |
+          npx @react-native-community/cli@latest init PhisorillaMobile --version 0.81.0 --skip-install --pm npm
+          echo "scaffold done"
+
+      - name: Copy app sources into project
+        run: |
+          cp app/protocol.js app/bridge.js app/service.js app/motion.js app/i18n.js app/worklet-source.js app/App.jsx PhisorillaMobile/
+          echo "sources copied"
+
+      - name: Install app icons
+        run: |
+          if [ -d app-icons ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              if [ -d "app-icons/$d" ]; then
+                mkdir -p "PhisorillaMobile/android/app/src/main/res/$d"
+                cp app-icons/$d/*.png "PhisorillaMobile/android/app/src/main/res/$d/"
+              fi
+            done
+            rm -f PhisorillaMobile/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml || true
+            rm -f PhisorillaMobile/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml || true
+            echo "icons installed"
+          else
+            echo "no app-icons dir"
+          fi
+
+      - name: Install fonts
+        run: |
+          if [ -d fonts ]; then
+            mkdir -p PhisorillaMobile/android/app/src/main/assets/fonts
+            cp fonts/*.ttf PhisorillaMobile/android/app/src/main/assets/fonts/ || true
+            echo "fonts installed:"; ls PhisorillaMobile/android/app/src/main/assets/fonts/ || true
+          else
+            echo "no fonts dir"
+          fi
+
+      - name: Bump minSdkVersion to 29
+        working-directory: PhisorillaMobile
+        run: |
+          sed -i -E "s/(minSdkVersion[[:space:]]*=[[:space:]]*)(2[0-8]|1[0-9])/\1 29/" android/build.gradle
+          sed -i -E "s/(minSdkVersion[[:space:]]*=[[:space:]]*)'(2[0-8]|1[0-9])'/\1'29'/" android/build.gradle
+          grep -n "minSdkVersion" android/build.gradle
+
+      - name: Enable New Architecture (required by bare-kit TurboModule)
+        working-directory: PhisorillaMobile
+        run: |
+          if grep -q "newArchEnabled" android/gradle.properties; then
+            sed -i 's/newArchEnabled=.*/newArchEnabled=true/' android/gradle.properties
+          else
+            echo "newArchEnabled=true" >> android/gradle.properties
+          fi
+          if grep -q "hermesEnabled" android/gradle.properties; then
+            sed -i 's/hermesEnabled=.*/hermesEnabled=true/' android/gradle.properties
+          else
+            echo "hermesEnabled=true" >> android/gradle.properties
+          fi
+          echo "--- gradle.properties key flags ---"
+          grep -E "newArchEnabled|hermesEnabled" android/gradle.properties
+
+      - name: Install app deps
+        working-directory: PhisorillaMobile
+        run: |
+          npm install --legacy-peer-deps
+          npm install react-native-bare-kit bare-rpc @react-native-community/blur --legacy-peer-deps
+          cd backend && npm install --legacy-peer-deps
+
+      - name: Register BareKitPackage in MainApplication.kt
+        working-directory: PhisorillaMobile
+        run: |
+          KT=$(find android/app/src/main -name "MainApplication.kt" | head -1)
+          echo "MainApplication.kt: $KT"
+          echo "--- before ---"
+          cat "$KT"
+          python3 "$GITHUB_WORKSPACE/scripts/register_barekit.py" "$KT"
+          echo "--- after ---"
+          cat "$KT"
+
+      - name: Configure all ABIs (phones + emulators)
+        working-directory: PhisorillaMobile
+        run: |
+          python3 "$GITHUB_WORKSPACE/scripts/abi_config.py" android/app/build.gradle
+          if grep -q "reactNativeArchitectures" android/gradle.properties; then
+            sed -i 's/reactNativeArchitectures=.*/reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64/' android/gradle.properties
+          else
+            echo "reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" >> android/gradle.properties
+          fi
+          grep -n "abiFilters" android/app/build.gradle || echo "(no abiFilters)"
+          grep -n "reactNativeArchitectures" android/gradle.properties
+
+      - name: Generate signing key
+        working-directory: PhisorillaMobile/android/app
+        run: |
+          keytool -genkeypair -v -keystore phi-release.keystore -alias phi -keyalg RSA -keysize 2048 -validity 10000 -storepass phisorilla -keypass phisorilla -dname "CN=Phisorilla, OU=Dev, O=Phisorilla, L=X, S=X, C=TW"
+          echo "keystore created"
+
+      - name: Configure release signing
+        working-directory: PhisorillaMobile/android
+        run: |
+          python3 "$GITHUB_WORKSPACE/scripts/sign_config.py" app/build.gradle
+          grep -n "signingConfig" app/build.gradle || true
+
+      - name: Build release APK
+        working-directory: PhisorillaMobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: phisorilla-release-apk
+          path: PhisorillaMobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
