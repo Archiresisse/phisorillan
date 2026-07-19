@@ -41,7 +41,8 @@ jobs:
       - name: Copy app sources into project
         run: |
           cp app/protocol.js app/bridge.js app/service.js app/motion.js app/i18n.js app/worklet-source.js app/App.jsx PhisorillaMobile/
-          echo "sources copied"
+          cp -r backend PhisorillaMobile/backend
+          echo "sources copied"; ls PhisorillaMobile/backend | head
 
       - name: Install app icons
         run: |
